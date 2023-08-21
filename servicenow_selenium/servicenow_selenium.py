@@ -4,7 +4,6 @@ from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertP
 from selenium.common.exceptions import ElementNotVisibleException, ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 
 class ServiceNowSelenium:
 
@@ -38,24 +37,10 @@ class ServiceNowSelenium:
 
        
     # Logout and quit driver function
-    def logout(self):
-
-        user_menu_path = '''document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot
-        .querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot
-        .querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.header-bar > sn-polaris-header").shadowRoot
-        .querySelector("#userMenu")
-        '''
+    def logout(self, user_menu_path, logout_path):
 
         self.click_shadow_element("user menu button", user_menu_path)
-
-        logout_path = '''document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot
-        .querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot
-        .querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.header-bar > sn-polaris-header").shadowRoot
-        .querySelector("#userMenu > span > span:nth-child(2) > div > div.user-menu-footer > button > div")
-        '''
-
         self.click_shadow_element("logout button", logout_path)
-        
 
         self.driver.quit()
 
