@@ -15,7 +15,6 @@ class ServiceNowSelenium:
         self.username = username
         self.password = password
 
-
     # Login function, initializes driver and logs in based on values provided
     def login(self):
         # Initialize 
@@ -42,6 +41,11 @@ class ServiceNowSelenium:
         self.click_shadow_element("user menu button", user_menu_path)
         self.click_shadow_element("logout button", logout_path)
 
+        self.driver.quit()
+
+    # Logout via endpoint
+    def logout_endpoint(self):
+        self.driver.get(f"{self.url}/logout.do")
         self.driver.quit()
 
 
