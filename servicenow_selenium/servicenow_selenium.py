@@ -142,13 +142,10 @@ class ServiceNowSelenium:
 
         run_test_button = self.driver.find_element(By.ID, 'd69ab3705b2212006f23efe5f0f91ada_bottom')
         run_test_button.click()
-        time.sleep(5)
-
         run_modal_test_button = self.driver.find_element(By.ID, 'run_button')
         run_modal_test_button.click()
         # self.run_test_modal()
 
-        time.sleep(10)
 
 
 
