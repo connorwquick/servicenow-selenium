@@ -4,21 +4,30 @@ from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertP
 from selenium.common.exceptions import ElementNotVisibleException, ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import requests
+import time
 
 class ServiceNowSelenium:
 
     # constructor
     # contains driver, url and login credentials
-    def __init__(self, url, username, password):
+    def __init__(self, url, username=None, password=None):
         self.driver = webdriver.Chrome()
         self.url = url
-        self.username = username
-        self.password = password
+        
+        if username is None:
+            self.username = input("Please enter your username: ")
+        else:
+            self.username = username
+        
+        if password is None:
+            self.password = input("Please enter your password: ")
+        else:
+            self.password = password
 
     # Login function, initializes driver and logs in based on values provided
     def login(self):
         # Initialize 
-        self.driver.maximize_window() # Full screen window
         self.driver.get(self.url) # Navigate to url given by constructor
         self.accept_alert() # Catch any alerts
 
@@ -34,6 +43,8 @@ class ServiceNowSelenium:
         login_button = self.driver.find_element(By.ID, 'sysverb_login')
         login_button.click()
 
+        # Accept and prompt for MFA if necessary
+        self.accept_mfa()
        
     # Logout and quit driver function
     def logout(self, user_menu_path, logout_path):
@@ -91,4 +102,53 @@ class ServiceNowSelenium:
             print("Alert accepted")
         except (NoAlertPresentException, TimeoutException, UnexpectedAlertPresentException):
             pass
+
+    # Prompt user to input Multi-Factor Authentication
+    def accept_mfa(self):
+        # Check if the MFA options div is present
+        mfa_div_elements = self.driver.find_elements(By.ID, "mfa_options")
+        if mfa_div_elements:
+            mfa_div = mfa_div_elements[0]
+            if mfa_div:
+                # Click the continue button
+                continue_button = self.driver.find_element(By.ID, "continue")
+                continue_button.click()
+                
+                # Prompt the user for the MFA code
+                mfa_code = input("Please enter your MFA code: ")
+                
+                # Input the MFA code into the provided field
+                mfa_input = self.driver.find_element(By.ID, "txtResponse")
+                mfa_input.send_keys(mfa_code)
+                
+                # Click the validate MFA code button
+                validate_button = self.driver.find_element(By.ID, "sysverb_validate_mfa_code")
+                validate_button.click()
+
+    def run_test_modal(self):
+        try:
+            WebDriverWait(self.driver, .5).until(EC.alert_is_present())
+            alert = self.driver.switch_to.alert
+            alert.accept()
+            print("Running Test")
+        except (NoAlertPresentException, TimeoutException, UnexpectedAlertPresentException):
+            pass
+    
+
+    def run_atf(self, test_suite_sys_id, run_test_path):
+        # Define the endpoint URL for the ATF test
+        atf_url = f"{self.url}sys_atf_test.do?sys_id={test_suite_sys_id}"
+        self.driver.get(atf_url)
+
+        run_test_button = self.driver.find_element(By.ID, 'd69ab3705b2212006f23efe5f0f91ada_bottom')
+        run_test_button.click()
+        time.sleep(5)
+
+        run_modal_test_button = self.driver.find_element(By.ID, 'run_button')
+        run_modal_test_button.click()
+        # self.run_test_modal()
+
+        time.sleep(10)
+
+
 
