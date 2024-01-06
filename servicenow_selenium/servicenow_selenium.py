@@ -59,40 +59,6 @@ class ServiceNowSelenium:
         self.driver.get(f"{self.url}/logout.do")
         self.driver.quit()
 
-
-    # Check if an element is present using JS path.
-    # Particularly useful for shadow DOM elements
-    def is_element_present(self, js_path):
-        # Attempt to return the element as is
-        try:
-            element = self.driver.execute_script(f"return {js_path}")
-            return element is not None
-        except Exception:
-            pass
-        # Attempt to detect outerHTML as second measure
-        try:
-            # Extract the outerHTML of the element
-            outer_html = self.driver.execute_script(f"return {js_path}.outerHTML;")
-            
-            # Check if the outerHTML is not null or empty
-            if outer_html:
-                return True
-        except Exception:
-            return False
-
-    # used to click shadow elements w/ js path.
-    # uses javascript to allow for explicit waits        
-    def click_shadow_element(self, errorName, js_path, wait_time = 10):
-        try:
-            # Try to poll for element presence
-            WebDriverWait(self.driver, wait_time).until(lambda x: self.is_element_present(js_path))
-            self.driver.execute_script(f"return {js_path}.click()")
-
-        except (TimeoutException, ElementNotVisibleException, ElementNotInteractableException) as e:
-            # If nothing works, then the element might not be present or interactable
-            raise Exception(f"The {errorName} button was not found. Additional info: {str(e)}")
-
-
     # Wait and accept alerts as they come
     def accept_alert(self):
         try:
@@ -125,27 +91,69 @@ class ServiceNowSelenium:
                 validate_button = self.driver.find_element(By.ID, "sysverb_validate_mfa_code")
                 validate_button.click()
 
-    def run_test_modal(self):
-        try:
-            WebDriverWait(self.driver, .5).until(EC.alert_is_present())
-            alert = self.driver.switch_to.alert
-            alert.accept()
-            print("Running Test")
-        except (NoAlertPresentException, TimeoutException, UnexpectedAlertPresentException):
-            pass
-    
 
-    def run_atf(self, test_suite_sys_id, run_test_path):
-        # Define the endpoint URL for the ATF test
-        atf_url = f"{self.url}sys_atf_test.do?sys_id={test_suite_sys_id}"
-        self.driver.get(atf_url)
+    # Method to get a JSElement
+    def get_js_element(self, js_path, name=""):
+        return self.JSElement(self.driver, js_path, name)
 
-        run_test_button = self.driver.find_element(By.ID, 'd69ab3705b2212006f23efe5f0f91ada_bottom')
-        run_test_button.click()
-        run_modal_test_button = self.driver.find_element(By.ID, 'run_button')
-        run_modal_test_button.click()
-        # self.run_test_modal()
 
+    class JSElement:
+        def __init__(self, driver, js_path, name=""):
+            self.driver = driver
+            self.js_path = js_path
+            self.name = name  # Name of the element for error reporting
+
+        # JS queries the element then checks for it's existence.
+        def is_present(self):
+            try:
+                element = self.driver.execute_script(f"return {self.js_path}")
+                return element is not None
+            except Exception:
+                pass
+            try:
+                outer_html = self.driver.execute_script(f"return {self.js_path}.outerHTML;")
+                return bool(outer_html)
+            except Exception:
+                return False
+            
+        # JS queries the element to determine if it's visible on the screen
+        def is_visible(self, wait_time=10):
+            try:
+                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                return self.driver.execute_script(f"return {self.js_path}.offsetParent !== null")
+            except Exception as e:
+                raise Exception(f"Error checking visibility of element {self.name}: {str(e)}")
+            
+        def hover(self):
+            try:
+                hover_script = f"const event = new MouseEvent('mouseover', {{bubbles: true}}); {self.js_path}.dispatchEvent(event);"
+                self.driver.execute_script(hover_script)
+            except Exception as e:
+                raise Exception(f"Error simulating hover on element {self.name}: {str(e)}")
+
+        # Click the element. Queries until it's found and then clicked.
+        def click(self, wait_time=10):
+            try:
+                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                self.driver.execute_script(f"return {self.js_path}.click()")
+            except (TimeoutException, ElementNotVisibleException, ElementNotInteractableException) as e:
+                raise Exception(f"The element{self.name} was not found or not interactable. Additional info: {str(e)}")
+
+        # Retrieves html of the element.
+        def get_text(self, wait_time=10):
+            try:
+                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                return self.driver.execute_script(f"return {self.js_path}.textContent || {self.js_path}.innerText")
+            except Exception as e:
+                raise Exception(f"Error getting text from element {self.name}: {str(e)}")
+            
+        # Take css property as in input.
+        def get_css_property(self, css_property_name, wait_time=10):
+            try:
+                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                return self.driver.execute_script(f"return window.getComputedStyle({self.js_path}).getPropertyValue('{css_property_name}');")
+            except Exception as e:
+                raise Exception(f"Error getting CSS property from element  {self.name}: {str(e)}")
 
 
 
