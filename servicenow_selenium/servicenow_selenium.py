@@ -171,6 +171,11 @@ class ServiceNowSelenium:
                 return self.driver.execute_script(script)
             except Exception as e:
                 raise Exception(f"Error getting CSS property '{css_property_name}' from pseudo-element '{pseudo_element}' for {self.name}: {str(e)}")
+
+        def find_child_elements(self, child_selector):
+            children_count = self.driver.execute_script(f"return {self.js_path}.querySelectorAll('{child_selector}').length;")
+            return [self.__class__(self.driver, f"({self.js_path}.querySelectorAll('{child_selector}'))[{i}]", f"{self.name}_child_{i}") for i in range(children_count)]
+
             
     def convert_rgb_string_to_hex(self, rgb_string):
         match = re.search(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)', rgb_string)
