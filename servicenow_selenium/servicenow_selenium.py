@@ -4,6 +4,8 @@ from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertP
 from selenium.common.exceptions import ElementNotVisibleException, ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import webcolors
+import re
 import requests
 import time
 
@@ -139,6 +141,13 @@ class ServiceNowSelenium:
             except (TimeoutException, ElementNotVisibleException, ElementNotInteractableException) as e:
                 raise Exception(f"The element{self.name} was not found or not interactable. Additional info: {str(e)}")
 
+        def get_outer_html(self, wait_time=10):
+            try:
+                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                return self.driver.execute_script(f"return {self.js_path}.outerHTML")
+            except Exception as e:
+                raise Exception(f"Error getting text from element {self.name}: {str(e)}")
+        
         # Retrieves html of the element.
         def get_text(self, wait_time=10):
             try:
@@ -148,12 +157,27 @@ class ServiceNowSelenium:
                 raise Exception(f"Error getting text from element {self.name}: {str(e)}")
             
         # Take css property as in input.
-        def get_css_property(self, css_property_name, wait_time=10):
+        def value_of_css_property(self, css_property_name, wait_time=10):
             try:
                 WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
                 return self.driver.execute_script(f"return window.getComputedStyle({self.js_path}).getPropertyValue('{css_property_name}');")
             except Exception as e:
                 raise Exception(f"Error getting CSS property from element  {self.name}: {str(e)}")
-
+            
+        def get_pseudo_element_css_property(self, pseudo_element, css_property_name, wait_time=10):
+            try:
+                WebDriverWait(self.driver,wait_time).until(lambda x: self.is_present())
+                script = f"return window.getComputedStyle({self.js_path}, '{pseudo_element}').getPropertyValue('{css_property_name}');"
+                return self.driver.execute_script(script)
+            except Exception as e:
+                raise Exception(f"Error getting CSS property '{css_property_name}' from pseudo-element '{pseudo_element}' for {self.name}: {str(e)}")
+            
+    def convert_rgb_string_to_hex(self, rgb_string):
+        match = re.search(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)', rgb_string)
+        if match:
+            rgb_tuple = tuple(map(int, match.groups()))
+            return webcolors.rgb_to_hex(rgb_tuple)
+        else:
+            raise ValueError("Invalid RGB format")
 
 
