@@ -191,12 +191,13 @@ class ServiceNowSelenium:
             
             
 
-    def convert_rgb_string_to_hex(self, rgb_string):
-        match = re.search(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)', rgb_string)
-        if match:
-            rgb_tuple = tuple(map(int, match.groups()))
-            return webcolors.rgb_to_hex(rgb_tuple)
-        else:
-            raise ValueError("Invalid RGB format")
+   def convert_rgb_string_to_hex(rgb_string):
+    # Regular expression to match both RGB and RGBA formats
+    match = re.search(r'rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)', rgb_string)
+    if match:
+        rgb_tuple = tuple(map(int, match.groups()))
+        return webcolors.rgb_to_hex(rgb_tuple)
+    else:
+        raise ValueError("Invalid RGB/RGBA format")
 
 
