@@ -118,65 +118,79 @@ class ServiceNowSelenium:
             except Exception:
                 return False
             
-        # JS queries the element to determine if it's visible on the screen
-        def is_visible(self, wait_time=10):
+        def wait_for_element(self, timeout=10):
             try:
-                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                WebDriverWait(self.driver,timeout).until(lambda x: self.is_present())
+                return True
+            except TimeoutException:
+                return False
+
+            
+        # JS queries the element to determine if it's visible on the screen
+        def is_visible(self):
+            try:
+                self.wait_for_element()
                 return self.driver.execute_script(f"return {self.js_path}.offsetParent !== null")
             except Exception as e:
                 raise Exception(f"Error checking visibility of element {self.name}: {str(e)}")
             
         def hover(self):
             try:
+                self.wait_for_element()
                 hover_script = f"const event = new MouseEvent('mouseover', {{bubbles: true}}); {self.js_path}.dispatchEvent(event);"
                 self.driver.execute_script(hover_script)
             except Exception as e:
                 raise Exception(f"Error simulating hover on element {self.name}: {str(e)}")
 
         # Click the element. Queries until it's found and then clicked.
-        def click(self, wait_time=10):
+        def click(self):
             try:
-                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                self.wait_for_element()
                 self.driver.execute_script(f"return {self.js_path}.click()")
             except (TimeoutException, ElementNotVisibleException, ElementNotInteractableException) as e:
                 raise Exception(f"The element{self.name} was not found or not interactable. Additional info: {str(e)}")
 
-        def get_outer_html(self, wait_time=10):
+        def get_outer_html(self):
             try:
-                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                self.wait_for_element()
                 return self.driver.execute_script(f"return {self.js_path}.outerHTML")
             except Exception as e:
                 raise Exception(f"Error getting text from element {self.name}: {str(e)}")
         
         # Retrieves html of the element.
-        def get_text(self, wait_time=10):
+        def get_text(self):
             try:
-                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                self.wait_for_element()
                 return self.driver.execute_script(f"return {self.js_path}.textContent || {self.js_path}.innerText")
             except Exception as e:
                 raise Exception(f"Error getting text from element {self.name}: {str(e)}")
             
         # Take css property as in input.
-        def value_of_css_property(self, css_property_name, wait_time=10):
+        def value_of_css_property(self, css_property_name):
             try:
-                WebDriverWait(self.driver, wait_time).until(lambda x: self.is_present())
+                self.wait_for_element()
                 return self.driver.execute_script(f"return window.getComputedStyle({self.js_path}).getPropertyValue('{css_property_name}');")
             except Exception as e:
                 raise Exception(f"Error getting CSS property from element  {self.name}: {str(e)}")
             
-        def get_pseudo_element_css_property(self, pseudo_element, css_property_name, wait_time=10):
+        def get_pseudo_element_css_property(self, pseudo_element, css_property_name):
             try:
-                WebDriverWait(self.driver,wait_time).until(lambda x: self.is_present())
+                self.wait_for_element()
                 script = f"return window.getComputedStyle({self.js_path}, '{pseudo_element}').getPropertyValue('{css_property_name}');"
                 return self.driver.execute_script(script)
             except Exception as e:
                 raise Exception(f"Error getting CSS property '{css_property_name}' from pseudo-element '{pseudo_element}' for {self.name}: {str(e)}")
-
-        def find_child_elements(self, child_selector):
-            children_count = self.driver.execute_script(f"return {self.js_path}.querySelectorAll('{child_selector}').length;")
-            return [self.__class__(self.driver, f"({self.js_path}.querySelectorAll('{child_selector}'))[{i}]", f"{self.name}_child_{i}") for i in range(children_count)]
-
             
+        def find_child_elements(self, child_selector):
+            try:
+                self.wait_for_element()
+                children_count = self.driver.execute_script(f"return {self.js_path}.querySelectorAll('{child_selector}').length;")
+                return [self.__class__(self.driver, f"({self.js_path}.querySelectorAll('{child_selector}'))[{i}]", f"{self.name}_child_{i}") for i in range(children_count)]
+            except Exception as e:
+                raise Exception(f"Could not find any child elements inside {self.name} under the name of {child_selector}: {str(e)}")
+            
+            
+
     def convert_rgb_string_to_hex(self, rgb_string):
         match = re.search(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)', rgb_string)
         if match:
