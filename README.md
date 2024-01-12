@@ -34,16 +34,21 @@ selenium_wrapper = ServiceNowSelenium(url="YOUR_SERVICENOW_URL", username="YOUR_
    ```python
    selenium_wrapper.logout(user_menu_path="JS_PATH_HERE", logout_path="JS_PATH_HERE")
    ```
+   ```python
+   selenium_wrapper.logout_endpoint()
+   ```
 3. **Interact with Shadow DOM Elements**:
    Click shadow elements using JS path:
 
    ```python
-   selenium_wrapper.click_shadow_element(errorName="element name for error reference", js_path="JS_PATH_HERE")
+   js_element = selenium_wrapper.get_js_element(js_path="JS_PATH_HERE")
+   js_element.click()
    ```
    Note: The provided JS path must contain "return" to correctly fetch the element. For instance, `return document.querySelector(...)`
-4. **Check for Element Presence**:
+4. **Utlize the JSElement class to interact with shadow dom elements**:
    Determine if an element is present using its JS path:
 
    ```python
-   is_present = selenium_wrapper.is_element_present(js_path="JS_PATH_HERE")
+   color = js_element.value_of_css_property("color")
+   children = js_element.find_child_elements("div.className")
    ```
