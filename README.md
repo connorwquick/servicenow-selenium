@@ -1,3 +1,4 @@
+![image](https://github.com/connorwquick/servicenow-selenium/assets/92193683/2eb2adc3-de5a-406a-9bf1-b7707bd4187a)
 # ServiceNow Selenium Wrapper
 
 A simple selenium wrapper designed for interaction with ServiceNow. This package simplifies logging in, managing alerts, and interacting with shadow elements within the ServiceNow environment.
