@@ -11,10 +11,45 @@ import re
 import time
 
 class JSElement:
-        def __init__(self, driver, js_path, name=""):
+        def __init__(self, driver, element_or_path, name=""):
             self.driver = driver
-            self.js_path = js_path
             self.name = name  # Name of the element for error reporting
+        
+            # Determine if element_or_path is a WebElement and convert to jsPath if necessary
+            if isinstance(element_or_path, WebElement):
+                self.js_path = generate_js_path(element_or_path, driver)
+            elif isinstance(element_or_path, str):
+                self.js_path = element_or_path
+            else:
+                raise ValueError("element_or_path must be a WebElement or a string representing a jsPath")
+
+        def generate_js_path(webelement, driver):
+        # JavaScript function to generate the path
+        script = """
+        function constructPath(element) {
+            if (element.id !== '') {
+                return 'id("' + element.id + '")';
+            }
+            if (element === document.body) {
+                return element.tagName;
+            }
+            var ix = 0;
+            var siblings = element.parentNode.childNodes;
+            for (var i = 0; i < siblings.length; i++) {
+                var sibling = siblings[i];
+                if (sibling === element) {
+                    return constructPath(element.parentNode) + '/' + element.tagName + '[' + (ix + 1) + ']';
+                }
+                if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+                    ix++;
+                }  
+            }
+        }
+        return constructPath(arguments[0]).toLowerCase();
+        """
+        # Execute the script and return the generated path
+        return driver.execute_script(script, webelement)
+
 
         # Execute wrapper for loggin errors
         def execute_script(self, script):
@@ -128,6 +163,17 @@ class JSElement:
                 return self.execute_script(script)
             except Exception as e:
                 raise Exception(f"Error getting CSS property '{css_property_name}' from pseudo-element '{pseudo_element}' for {self.name}: {str(e)}")
+        
+        def find_child_element(self, child_selector):
+            try:
+                self.wait_for_element()
+                # Use querySelector instead of querySelectorAll to get only the first matching element
+                child_element_js_path = f"{self.js_path}.querySelector('{child_selector}')"
+                # Return a single JSElement object for the first matching child
+                return self.__class__(self.driver, child_element_js_path, f"{self.name}_child")
+            except Exception as e:
+                raise Exception(f"Could not find child element inside {self.name} using selector {child_selector}: {str(e)}")
+
             
         def find_child_elements(self, child_selector):
             try:
