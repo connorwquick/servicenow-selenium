@@ -1,13 +1,17 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertPresentException, TimeoutException
-from selenium.common.exceptions import ElementNotVisibleException, ElementNotInteractableException
+from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertPresentException, TimeoutException, NoSuchElementException
+from selenium.common.exceptions import ElementNotVisibleException, ElementNotInteractableException, JavascriptException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 import webcolors
 import re
-import requests
 import time
+
+from servicenow_selenium.js_element import JSElement
+
 
 class ServiceNowSelenium:
 
@@ -16,6 +20,7 @@ class ServiceNowSelenium:
     def __init__(self, url, username=None, password=None):
         self.driver = webdriver.Chrome()
         self.url = url
+        self.actions = ActionChains(self.driver)
         
         if username is None:
             self.username = input("Please enter your username: ")
@@ -47,6 +52,62 @@ class ServiceNowSelenium:
 
         # Accept and prompt for MFA if necessary
         self.accept_mfa()
+
+    def impersonate_user(self, username=None):
+        current_url = self.driver.current_url
+        self.driver.get(self.url)
+        if username is None:
+            raise ValueError("At least one argument must be provided. username")
+        user_value =  username
+        user_dropdown = self.get_js_element('document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot.querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot.querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.header-bar > sn-polaris-header").shadowRoot.querySelector("nav > div > div.ending-header-zone > div.polaris-header-controls > div.utility-menu.can-animate > div > now-avatar").shadowRoot.querySelector("span > span")')
+        user_dropdown.click()
+        impersonate_button = self.get_js_element('document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot.querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot.querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.header-bar > sn-polaris-header").shadowRoot.querySelector("#userMenu > span > span:nth-child(2) > div > div.user-menu-controls > button.user-menu-button.impersonateUser.keyboard-navigatable.polaris-enabled")')
+        impersonate_button.click()
+        search = self.get_js_element('document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot.querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot.querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.content-area.can-animate > sn-impersonation").shadowRoot.querySelector("now-modal > div > now-typeahead").shadowRoot.querySelector("div > now-popover > div")')
+        search_bar = search.find_child_elements('.now-typeahead-native-input')
+        search_bar[0].set_value(user_value)
+        search_bar[0].trigger_event()
+        self.actions.send_keys(Keys.TAB).perform()
+        self.actions.send_keys(Keys.ENTER).perform()
+        time.sleep(3)
+        self.actions.send_keys(Keys.ARROW_DOWN).perform()
+        time.sleep(3)
+        self.actions.send_keys(Keys.ENTER).perform()
+        modal = self.get_js_element('document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot.querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot.querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.content-area.can-animate > sn-impersonation").shadowRoot.querySelector("now-modal").shadowRoot.querySelector("div > div > div")')
+        impersonate_user_button = self.get_js_element('document.querySelector("body > macroponent-f51912f4c700201072b211d4d8c26010").shadowRoot.querySelector("div > sn-canvas-appshell-root > sn-canvas-appshell-layout > sn-polaris-layout").shadowRoot.querySelector("div.sn-polaris-layout.polaris-enabled > div.layout-main > div.content-area.can-animate > sn-impersonation").shadowRoot.querySelector("now-modal").shadowRoot.querySelector("div > div > div > div.now-modal-footer > now-button:nth-child(2)").shadowRoot.querySelector("button")')
+        impersonate_user_button.click()
+        self.driver.get(current_url)        
+        time.sleep(5)
+        # time.sleep(20)
+
+    #impersonate user on Employee Center
+    # Can take username or sys_id as arguments.
+    # Will always use sys_id if both are provided.
+    def impersonate_user_esc(self, username=None, user_sys_id=None):
+        if username is None and user_sys_id is None:
+            raise ValueError("At least one argument must be provided. username or user_sys_id")
+        user_dropdown = self.driver.find_element(By.ID, "profile-dropdown")
+        user_dropdown.click()
+        impersonate = self.get_js_element('document.querySelector("body > div.sp-page-root.page.flex-column.sp-can-animate > section > header > div > nav > div:nth-child(1) > div > div.navbar-right.ng-scope > div > div > div > ul > li.hidden-xs.dropdown.ng-scope.open > ul > li:nth-child(2) > a")')
+        impersonate.click()
+
+        modal = self.get_js_element('document.querySelector("body > div.modal.fade.ng-isolate-scope.in > div > div")')
+        modal.wait_for_element()
+        # modal_dropdown = modal.find_child_elements("#select2-drop-mask")
+        # print(modal_dropdown)
+        # modal_dropdown[0].click()
+        search_bar = self.get_js_element('document.querySelector("#s2id_autogen2_search")')
+        search_bar.set_value("Test")
+        time.sleep(10)
+        
+        # modal_search = self.get_js_element('document.querySelector("#s2id_autogen25_search")')
+        # print(modal_search.get_text())
+        
+
+        # if user_sys_id is not None:
+            
+        # elif username is not None:
+
        
     # Logout and quit driver function
     def logout(self, user_menu_path, logout_path):
@@ -96,108 +157,16 @@ class ServiceNowSelenium:
 
     # Method to get a JSElement
     def get_js_element(self, js_path, name=""):
-        return self.JSElement(self.driver, js_path, name)
-
-
-    class JSElement:
-        def __init__(self, driver, js_path, name=""):
-            self.driver = driver
-            self.js_path = js_path
-            self.name = name  # Name of the element for error reporting
-
-        # JS queries the element then checks for it's existence.
-        def is_present(self):
-            try:
-                element = self.driver.execute_script(f"return {self.js_path}")
-                return element is not None
-            except Exception:
-                pass
-            try:
-                outer_html = self.driver.execute_script(f"return {self.js_path}.outerHTML;")
-                return bool(outer_html)
-            except Exception:
-                return False
-            
-        def wait_for_element(self, timeout=10):
-            try:
-                WebDriverWait(self.driver,timeout).until(lambda x: self.is_present())
-                return True
-            except TimeoutException:
-                return False
-
-            
-        # JS queries the element to determine if it's visible on the screen
-        def is_visible(self):
-            try:
-                self.wait_for_element()
-                return self.driver.execute_script(f"return {self.js_path}.offsetParent !== null")
-            except Exception as e:
-                raise Exception(f"Error checking visibility of element {self.name}: {str(e)}")
-            
-        def hover(self):
-            try:
-                self.wait_for_element()
-                hover_script = f"const event = new MouseEvent('mouseover', {{bubbles: true}}); {self.js_path}.dispatchEvent(event);"
-                self.driver.execute_script(hover_script)
-            except Exception as e:
-                raise Exception(f"Error simulating hover on element {self.name}: {str(e)}")
-
-        # Click the element. Queries until it's found and then clicked.
-        def click(self):
-            try:
-                self.wait_for_element()
-                self.driver.execute_script(f"return {self.js_path}.click()")
-            except (TimeoutException, ElementNotVisibleException, ElementNotInteractableException) as e:
-                raise Exception(f"The element{self.name} was not found or not interactable. Additional info: {str(e)}")
-
-        def get_outer_html(self):
-            try:
-                self.wait_for_element()
-                return self.driver.execute_script(f"return {self.js_path}.outerHTML")
-            except Exception as e:
-                raise Exception(f"Error getting text from element {self.name}: {str(e)}")
-        
-        # Retrieves html of the element.
-        def get_text(self):
-            try:
-                self.wait_for_element()
-                return self.driver.execute_script(f"return {self.js_path}.textContent || {self.js_path}.innerText")
-            except Exception as e:
-                raise Exception(f"Error getting text from element {self.name}: {str(e)}")
-            
-        # Take css property as in input.
-        def value_of_css_property(self, css_property_name):
-            try:
-                self.wait_for_element()
-                return self.driver.execute_script(f"return window.getComputedStyle({self.js_path}).getPropertyValue('{css_property_name}');")
-            except Exception as e:
-                raise Exception(f"Error getting CSS property from element  {self.name}: {str(e)}")
-            
-        def get_pseudo_element_css_property(self, pseudo_element, css_property_name):
-            try:
-                self.wait_for_element()
-                script = f"return window.getComputedStyle({self.js_path}, '{pseudo_element}').getPropertyValue('{css_property_name}');"
-                return self.driver.execute_script(script)
-            except Exception as e:
-                raise Exception(f"Error getting CSS property '{css_property_name}' from pseudo-element '{pseudo_element}' for {self.name}: {str(e)}")
-            
-        def find_child_elements(self, child_selector):
-            try:
-                self.wait_for_element()
-                children_count = self.driver.execute_script(f"return {self.js_path}.querySelectorAll('{child_selector}').length;")
-                return [self.__class__(self.driver, f"({self.js_path}.querySelectorAll('{child_selector}'))[{i}]", f"{self.name}_child_{i}") for i in range(children_count)]
-            except Exception as e:
-                raise Exception(f"Could not find any child elements inside {self.name} under the name of {child_selector}: {str(e)}")
-            
+        return JSElement(self.driver, js_path, name)
             
 
-   def convert_rgb_string_to_hex(rgb_string):
-    # Regular expression to match both RGB and RGBA formats
-    match = re.search(r'rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)', rgb_string)
-    if match:
-        rgb_tuple = tuple(map(int, match.groups()))
-        return webcolors.rgb_to_hex(rgb_tuple)
-    else:
-        raise ValueError("Invalid RGB/RGBA format")
+    def convert_rgb_string_to_hex(self, rgb_string):
+        # Regular expression to match both RGB and RGBA formats
+        match = re.search(r'rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)', rgb_string)
+        if match:
+            rgb_tuple = tuple(map(int, match.groups()))
+            return webcolors.rgb_to_hex(rgb_tuple)
+        else:
+            raise ValueError("Invalid RGB/RGBA format")
 
 
